@@ -1,0 +1,38 @@
+source:
+  type: sftp
+  host: 0.0.0.0
+  port: 22
+  username: foo
+  password: pass
+
+target:
+  type: http
+  host: http://localhost:8080/upload-file
+  header:
+    - key: Authorization
+      value: Basic 12345
+  upload:
+    - key: file
+      value: file
+    - key: statement_type
+      value: withdrawal
+
+cron:
+  - name: get-sample-txt
+    every: 5
+    type: day
+    specific_day: Monday
+    at: '14:32'
+    task: 
+      folder: /upload
+      file_prefix: '\d*_\d*_\d*.\d*.\d*.csv$'
+      file_prefix_delimiter: .
+      file_prefix_index: 1
+  - name: get-sample-txt-fixed-file
+    every: 5
+    type: second
+    specific_day: None
+    task: 
+      folder: /upload
+      file: sample.txt
+ 
