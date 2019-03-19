@@ -5,38 +5,124 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strconv"
+	"strings"
 
 	"gopkg.in/yaml.v2"
 )
 
 // NewConfig is used to read config file
-func NewConfig(filepath string, configType string) *Config {
+func NewConfig(configFile string, configType string) *Config {
 	var config Config
 
-	if configType == `yaml` {
-		configdata, errReadFile := ioutil.ReadFile(filepath)
-		if errReadFile != nil {
-			log.Fatalf(errReadFile.Error())
-		}
-
-		errParseYaml := yaml.Unmarshal(configdata, &config)
-		if errParseYaml != nil {
-			log.Fatalf(errParseYaml.Error())
-		}
-	} else {
-		tempConfigDataInBase64 := os.Getenv(filepath)
-		configdata, err := base64.StdEncoding.DecodeString(tempConfigDataInBase64)
-		if err != nil {
-			log.Fatalf(err.Error())
-		}
-
-		errParseYaml := yaml.Unmarshal([]byte(configdata), &config)
-		if errParseYaml != nil {
-			log.Fatalf(errParseYaml.Error())
-		}
+	switch configType {
+	case `yaml`:
+		InitiateYaml(&config, configFile)
+		break
+	case `yaml-base64`:
+		InitiateYamlBase64(&config, configFile)
+		break
+	case `env`:
+		InitiateFromEnv(&config)
+		break
+	default:
+		InitiateYaml(&config, configFile)
 	}
 
 	return &config
+}
+
+// InitiateYaml initiates config from yaml file
+func InitiateYaml(config *Config, filepath string) {
+	configdata, errReadFile := ioutil.ReadFile(filepath)
+	if errReadFile != nil {
+		log.Fatalf(errReadFile.Error())
+	}
+
+	errParseYaml := yaml.Unmarshal(configdata, &config)
+	if errParseYaml != nil {
+		log.Fatalf(errParseYaml.Error())
+	}
+}
+
+// InitiateYamlBase64 initiates config from environment variable and the value is in base64
+func InitiateYamlBase64(config *Config, envkey string) {
+	tempConfigDataInBase64 := os.Getenv(envkey)
+	configdata, err := base64.StdEncoding.DecodeString(tempConfigDataInBase64)
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	errParseYaml := yaml.Unmarshal([]byte(configdata), &config)
+	if errParseYaml != nil {
+		log.Fatalf(errParseYaml.Error())
+	}
+}
+
+// InitiateFromEnv initiates config from environment variable
+// This is applicable for single task only
+func InitiateFromEnv(config *Config) {
+	config.Source.Type = os.Getenv("SOURCE_TYPE")
+	config.Source.Host = os.Getenv("SOURCE_HOST")
+	config.Source.Port = os.Getenv("SOURCE_PORT")
+	config.Source.Username = os.Getenv("SOURCE_USERNAME")
+	config.Source.Password = os.Getenv("SOURCE_PASSWORD")
+
+	config.Target.Type = os.Getenv("TARGET_TYPE")
+	config.Target.Host = os.Getenv("TARGET_HOST")
+
+	targetHeader := os.Getenv("TARGET_HEADER")
+	targetHeaders := strings.Split(targetHeader, `;`)
+	for _, item := range targetHeaders {
+		tempItem := strings.Split(item, `:`)
+		if len(tempItem) > 1 {
+			header := make(map[string]string)
+			header[`key`] = tempItem[0]
+			header[`value`] = tempItem[1]
+
+			config.Target.Header = append(config.Target.Header, header)
+		}
+	}
+
+	targetUploadParam := os.Getenv("TARGET_UPLOAD_PARAM")
+	targetUploadParams := strings.Split(targetUploadParam, `;`)
+	for _, item := range targetUploadParams {
+		tempItem := strings.Split(item, `:`)
+		if len(tempItem) > 1 {
+			param := make(map[string]string)
+			param[`key`] = tempItem[0]
+			param[`value`] = tempItem[1]
+
+			config.Target.Upload = append(config.Target.Upload, param)
+		}
+	}
+
+	cronEvery, errCronEvery := strconv.ParseUint(os.Getenv("CRON_EVERY"), 10, 64)
+	if errCronEvery != nil {
+		cronEvery = 0
+	}
+
+	filePrefixIndex, errFilePrefixIndex := strconv.ParseInt(os.Getenv("TASK_FILE_PREFIX_INDEX"), 10, 64)
+	if errFilePrefixIndex != nil {
+		filePrefixIndex = 0
+	}
+
+	cron := Cron{
+		Name:        os.Getenv("CRON_NAME"),
+		Type:        os.Getenv("CRON_TYPE"),
+		SpecificDay: os.Getenv("CRON_SPECIFIC_DAY"),
+		At:          os.Getenv("CRON_AT"),
+		Every:       cronEvery,
+		Task: CronTask{
+			SourceFolder:        os.Getenv("TASK_FOLDER"),
+			File:                os.Getenv("TASK_FILE"),
+			FilePrefix:          os.Getenv("TASK_FILE_PREFIX"),
+			FilePrefixDelimiter: os.Getenv("TASK_FILE_PREFIX_DELIMITER"),
+			FilePrefixIndex:     filePrefixIndex,
+		},
+	}
+
+	config.Cron = append(config.Cron, cron)
 }
 
 // Config represents the config file for go-upload
