@@ -183,11 +183,14 @@ func (t *Task) Upload(tempfilepath string) {
 	}
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
-	httpclient := &http.Client{}
+	httpclient := &http.Client{Timeout: time.Duration(t.config.Target.Timeout) * time.Second}
 	resp, err := httpclient.Do(req)
 	if err != nil {
 		Logf("Failed to receive response when uploading file=%s error=%s\n", tempfilepath, err.Error())
+		Log("Retrying file upload in 5s ...")
 		Log("----------------------------------")
+		time.Sleep(5 * time.Second)
+		t.Upload(tempfilepath)
 		return
 	}
 

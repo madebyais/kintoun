@@ -84,6 +84,17 @@ func InitiateFromEnv(config *Config) {
 		}
 	}
 
+	timeout := "5"
+	if os.Getenv("TIMEOUT") != "" {
+		timeout = os.Getenv("TIMEOUT")
+	}
+	uploadTimeout, errUploadTimeout := strconv.ParseInt(timeout, 10, 64)
+	if errUploadTimeout != nil {
+		uploadTimeout = 5
+	}
+
+	config.Target.Timeout = uploadTimeout
+
 	targetUploadParam := os.Getenv("TARGET_UPLOAD_PARAM")
 	targetUploadParams := strings.Split(targetUploadParam, `;`)
 	for _, item := range targetUploadParams {
@@ -144,10 +155,11 @@ type Source struct {
 
 // Target represents parameter used for submit data to target data
 type Target struct {
-	Type   string              `yaml:"type"`
-	Host   string              `yaml:"host"`
-	Header []map[string]string `yaml:"header"`
-	Upload []map[string]string `yaml:"upload"`
+	Type    string              `yaml:"type"`
+	Host    string              `yaml:"host"`
+	Header  []map[string]string `yaml:"header"`
+	Upload  []map[string]string `yaml:"upload"`
+	Timeout int64               `yaml:"timeout"`
 }
 
 // Cron represents parameter used for schedule task

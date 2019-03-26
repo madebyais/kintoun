@@ -56,15 +56,15 @@ source:
 ```
 `source` is the source data. Currently, KINTOUN only supports SFTP.
 
-`source.type` is set to `sftp`
+`source.type` is can be set to `sftp`, `ftp`, or `ftps` 
 
 `source.host` is the host of the sftp server
 
 `source.port` is the port of the sftp server
 
-`source.username` is the username to access sftp server
+`source.username` is the username to access ftp server
 
-`source.password` is the password to access sftp server
+`source.password` is the password to access ftp server
 
 
 ```
@@ -78,7 +78,7 @@ target:
     - key: file 
       value: file
     - key: channel
-      value: CIMB
+      value: some_3rd_party
 ```
 `target` is the destination where the data will be sent. Currently, KINTOUN only supports HTTP.
 
@@ -89,6 +89,7 @@ target:
 `target.header` is the header that need to be sent along with the request to destination server
 
 `target.upload` contains the list of form to be sent to the destination server. If the `key` and `value` are same, then KINTOUN will set this as the file object in the multipart form
+
 
 ```
 cron:
