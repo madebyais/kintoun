@@ -40,3 +40,7 @@
 [[constraint]]
   name = "github.com/pkg/sftp"
   version = "1.10.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/marcobeierer/ftps"

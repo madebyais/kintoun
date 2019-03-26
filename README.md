@@ -7,7 +7,7 @@ There are several projects that I've been working on need for an automation in u
 
 #### Supports
 
-Currently, it only supports from SFTP to HTTP REST API.
+Currently, it only supports from SFTP, FTP, FTPS to HTTP REST API.
 
 #### How-to
 

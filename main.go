@@ -9,13 +9,12 @@ func main() {
 	var configType string
 
 	flag.StringVar(&configFile, "config", "config.yaml", "Configuration file path")
-	flag.StringVar(&configType, "config-type", "yaml", "Configuration type: yaml, yaml-base64")
+	flag.StringVar(&configType, "config-type", "yaml", "Configuration type: yaml, yaml-base64, env")
 
 	flag.Parse()
 
 	config := NewConfig(configFile, configType)
-	client := NewClient(config)
 
-	task := NewTask(config, client)
+	task := NewTask(config)
 	task.Start()
 }

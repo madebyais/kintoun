@@ -35,6 +35,14 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:a880aff67fee106ff57d000f4b1d3a80bc251f6a69f3039c622d5b7c59918e11"
+  name = "github.com/webguerilla/ftps"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "60e520f5feed5eaa0951aeecfc772a35bbe9f83d"
+
+[[projects]]
+  branch = "master"
   digest = "1:09d4ba0a111bd85dffabc19b9b6d89e89bef285790103ced8824d823813dcdab"
   name = "golang.org/x/crypto"
   packages = [
@@ -74,6 +82,7 @@
   input-imports = [
     "github.com/jasonlvhit/gocron",
     "github.com/pkg/sftp",
+    "github.com/webguerilla/ftps",
     "golang.org/x/crypto/ssh",
     "gopkg.in/yaml.v2",
   ]

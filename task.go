@@ -2,13 +2,11 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -16,24 +14,16 @@ import (
 	"github.com/jasonlvhit/gocron"
 )
 
-// NewTask returns available method in Task schema
-func NewTask(config *Config, client *Client) *Task {
-	return &Task{
-		config:          config,
-		client:          client,
-		lastFileModTime: make(map[string]time.Time),
-		lastFileUpload:  make(map[string]string),
-	}
-}
-
-// Task represents
+// Task represents task that will be executed
 type Task struct {
 	config *Config
-	client *Client
+}
 
-	filenameToDownload string
-	lastFileModTime    map[string]time.Time
-	lastFileUpload     map[string]string
+// NewTask returns a task object
+func NewTask(config *Config) *Task {
+	return &Task{
+		config: config,
+	}
 }
 
 // Start will start running the job in background
@@ -58,7 +48,7 @@ func (t *Task) Register() {
 			job = job.At(item.At)
 		}
 
-		job.Do(t.SendFile(item))
+		job.Do(t.Exec(item))
 		Logf("Job name=%s every=%d type=%s specific_day=%s at=%s is registered ...\n", item.Name, item.Every, item.Type, item.SpecificDay, item.At)
 	}
 
@@ -102,86 +92,51 @@ func (t *Task) getJobType(job *gocron.Job, every uint64, defaultType string) *go
 	return job
 }
 
-// SendFile is used to upload file into target destination
-func (t *Task) SendFile(crondata Cron) func() {
+// Exec will execute the job based on submitted config
+// Following are the steps for exec method:
+//
+// - Read files in source folder/dir
+// - If there's a new file to download, then set the filename
+// - Download the file as temporary file
+// - Upload to target destionation
+// - Remove temporary file
+func (t *Task) Exec(crondata Cron) func() {
 	return func() {
-		clientSession := t.client.InitSftp()
+		Logf("Job name=%s\n", crondata.Name)
+
+		clientType := strings.ToLower(t.config.Source.Type)
+		clientSession := InitiateFTPClient(clientType, t.config)
 		defer clientSession.Close()
 
-		Logf("Job name=%s\n", crondata.Name)
-		if crondata.Task.FilePrefix != "" {
-			sourceFiles, errSourceFiles := clientSession.ReadDir(crondata.Task.SourceFolder)
-			if errSourceFiles != nil {
-				Logf("Failed to list directory dir=%s error=%s\n", crondata.Task.SourceFolder, errSourceFiles.Error())
-			}
-
-			for _, item := range sourceFiles {
-				isMatch, _ := regexp.MatchString(crondata.Task.FilePrefix, item.Name())
-				isYearMatch := item.ModTime().Year() == time.Now().Year()
-				isMonthMatch := item.ModTime().Month() == time.Now().Month()
-				isDayMatch := item.ModTime().Day() == time.Now().Day()
-
-				prefixCodes := strings.Split(item.Name(), crondata.Task.FilePrefixDelimiter)
-				prefixCode := prefixCodes[crondata.Task.FilePrefixIndex]
-				isFileLatestUpdate := item.ModTime().After(t.lastFileModTime[prefixCode])
-				isPrevFileDifferent := t.lastFileUpload[prefixCode] != item.Name()
-
-				if !isPrevFileDifferent {
-					t.filenameToDownload = ""
-					continue
-				}
-
-				if isMatch && isYearMatch && isMonthMatch && isDayMatch && isFileLatestUpdate && isPrevFileDifferent {
-					t.lastFileModTime[prefixCode] = item.ModTime()
-					t.lastFileUpload[prefixCode] = item.Name()
-					t.filenameToDownload = item.Name()
-				}
-			}
-		} else {
-			t.filenameToDownload = crondata.Task.File
+		folderPath := crondata.Task.SourceFolder
+		errReaddirSourceFolder := clientSession.ReaddirSourceFolder(crondata)
+		if errReaddirSourceFolder != nil {
+			Logf("Failed to list directory dir=%s error=%s\n", folderPath, errReaddirSourceFolder.Error())
+			Log("----------------------------------")
+			return
 		}
 
-		if t.filenameToDownload == "" {
+		filename := clientSession.GetFilenameToDownload()
+		if filename == "" {
 			Log("No new file need to be downloaded")
 			Log("----------------------------------")
 			return
 		}
 
-		Logf("Downloading file=%s/%s ...\n", crondata.Task.SourceFolder, t.filenameToDownload)
-
-		filepath := crondata.Task.SourceFolder + "/" + t.filenameToDownload
-		sourceFile, errSourceFile := clientSession.Open(filepath)
-		if errSourceFile != nil {
-			Logf("Failed to download filepath=%s error=%s\n", filepath, errSourceFile.Error())
+		filepath := folderPath + `/` + filename
+		errDownloadTempFile := clientSession.DownloadTempFile(filepath)
+		if errDownloadTempFile != nil {
+			Logf("Failed to download filepath=%s error=%s\n", filepath, errDownloadTempFile.Error())
 			Log("----------------------------------")
 			return
 		}
-		defer sourceFile.Close()
 
-		tempfile := fmt.Sprintf("./%s", t.filenameToDownload)
-		destinationFile, errCreateDestFile := os.Create(tempfile)
-		if errCreateDestFile != nil {
-			Logf("Failed to create temp file when downloading error=%s\n", errCreateDestFile.Error())
-			Log("----------------------------------")
-			return
-		}
-		defer destinationFile.Close()
-
-		_, errCopySourceToDest := io.Copy(destinationFile, sourceFile)
-		if errCopySourceToDest != nil {
-			Logf("Failed to download error=%s\n", errCopySourceToDest.Error())
-			Log("----------------------------------")
-			return
-		}
-		destinationFile.Sync()
-		Logf("File=%s/%s Temp=%s has been downloaded succesfully ...\n", crondata.Task.SourceFolder, t.filenameToDownload, tempfile)
-
-		t.UploadFile(tempfile)
+		t.Upload(filename)
 	}
 }
 
-// UploadFile will upload from download temp file into target destination
-func (t *Task) UploadFile(tempfilepath string) {
+// Upload is used to uplad download temp file to destination
+func (t *Task) Upload(tempfilepath string) {
 	Logf("Uploading file=%s ...\n", tempfilepath)
 
 	body := &bytes.Buffer{}
@@ -193,6 +148,7 @@ func (t *Task) UploadFile(tempfilepath string) {
 			if err != nil {
 				Logf("Failed to upload file=%s error=%s\n", tempfilepath, err.Error())
 				Log("----------------------------------")
+				return
 			}
 			defer file.Close()
 
@@ -217,7 +173,7 @@ func (t *Task) UploadFile(tempfilepath string) {
 
 	req, err := http.NewRequest("POST", t.config.Target.Host, body)
 	if err != nil {
-		Logf("Failed to upload file=%s ...\n", tempfilepath)
+		Logf("Failed to upload file=%s error=%s...\n", tempfilepath, err.Error())
 		Log("----------------------------------")
 		return
 	}
@@ -230,7 +186,7 @@ func (t *Task) UploadFile(tempfilepath string) {
 	httpclient := &http.Client{}
 	resp, err := httpclient.Do(req)
 	if err != nil {
-		Logf("Failed to receive response when uploading file=%s ...\n", tempfilepath)
+		Logf("Failed to receive response when uploading file=%s error=%s\n", tempfilepath, err.Error())
 		Log("----------------------------------")
 		return
 	}
@@ -240,13 +196,15 @@ func (t *Task) UploadFile(tempfilepath string) {
 		Log("Retrying file upload in 5s ...")
 		Log("----------------------------------")
 		time.Sleep(5 * time.Second)
-		t.UploadFile(tempfilepath)
+		t.Upload(tempfilepath)
 		return
 	}
+
+	Log("File has been uploaded successfully")
 
 	Log("Removing temp file ...")
 	_ = os.Remove(tempfilepath)
 
-	Log("Uploaded successfully")
+	Logf("Job is done\n")
 	Log("----------------------------------")
 }
