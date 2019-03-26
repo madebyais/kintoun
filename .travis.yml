@@ -1,0 +1,15 @@
+language: go
+go: 
+  - master
+
+services:
+  - docker
+
+before_install:
+  - docker pull atmoz/sftp
+  - docker run -p 22:22 -d atmoz/sftp foo:pass:::upload
+  - docker ps -a
+  - cp config.sample.yaml config.yaml
+  
+script:
+- go test ./... -v -cover

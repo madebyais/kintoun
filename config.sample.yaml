@@ -24,7 +24,7 @@ cron:
     type: second
     specific_day: None
     task: 
-      folder: /share/dumps
+      folder: /upload
       file_prefix: \d*_\d*_\d*.\d*.\d*.csv$
       file_prefix_delimiter: .
       file_prefix_index: 1
