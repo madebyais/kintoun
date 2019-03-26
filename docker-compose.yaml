@@ -1,0 +1,22 @@
+version: '3'
+
+services:
+  sftp:
+    image: atmoz/sftp
+    ports:
+      - 23:22
+    command: foo:pass:1001
+    volumes:
+      - /tmp/upload:/home/foo/upload
+  ftps:
+    build: .
+    volumes:
+      - /tmp:/home/virtual/jetbrains/share
+    environment:
+      PASV_ADDRESS: 127.0.0.1
+      VSFTPD_USER_1: "jetbrains:jetbrains::"
+      PASV_MIN_PORT: 30010
+      PASV_MAX_PORT: 30019
+    ports:
+      - "24:21"
+      - "30010-30019:30010-30019"
