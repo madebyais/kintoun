@@ -1,6 +1,8 @@
 KINTOUN
 -------
 
+![Build Status](https://travis-ci.org/madebyais/kintoun.svg?branch=master)
+
 #### Background
 
 There are several projects that I've been working on need for an automation in uploading files from one place to another place.
