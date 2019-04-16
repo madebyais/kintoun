@@ -1,0 +1,2 @@
+deb:
+	fpm -f -s dir -t deb --version 0.1 --license MIT -m madebyais@gmail.com --url https://github.com/madebyais/kintoun --vendor madebyais.com --description "FTP, FTPS and SFTP to HTTP REST file syncer" -n kintoun ~/Workspace/Engineering/src/github.com/madebyais/kintoun=/opt/kintoun
