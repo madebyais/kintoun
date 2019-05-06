@@ -67,6 +67,7 @@ func InitiateFromEnv(config *Config) {
 	config.Source.Port = os.Getenv("SOURCE_PORT")
 	config.Source.Username = os.Getenv("SOURCE_USERNAME")
 	config.Source.Password = os.Getenv("SOURCE_PASSWORD")
+	config.Source.Folder = os.Getenv("SOURCE_FOLDER")
 
 	config.Target.Type = os.Getenv("TARGET_TYPE")
 	config.Target.Host = os.Getenv("TARGET_HOST")

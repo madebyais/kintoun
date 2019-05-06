@@ -123,6 +123,12 @@ func (t *Task) Exec(crondata Cron) func() {
 			return
 		}
 
+		// This is to check whether cron.source.folder is local folder
+		if strings.Contains(filename, "/") {
+			t.Upload(filename)
+			return
+		}
+
 		filepath := folderPath + `/` + filename
 		errDownloadTempFile := clientSession.DownloadTempFile(filepath)
 		if errDownloadTempFile != nil {
@@ -205,8 +211,10 @@ func (t *Task) Upload(tempfilepath string) {
 
 	Log("File has been uploaded successfully")
 
-	Log("Removing temp file ...")
-	_ = os.Remove(tempfilepath)
+	if !strings.Contains(tempfilepath, "/") {
+		Log("Removing temp file ...")
+		_ = os.Remove(tempfilepath)
+	}
 
 	Logf("Job is done\n")
 	Log("----------------------------------")

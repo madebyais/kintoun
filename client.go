@@ -25,6 +25,7 @@ func InitiateFTPClient(clientType string, config *Config) Interface {
 	port := config.Source.Port
 	username := config.Source.Username
 	password := config.Source.Password
+	dirpath := config.Source.Folder
 
 	var clientSession Interface
 
@@ -34,6 +35,9 @@ func InitiateFTPClient(clientType string, config *Config) Interface {
 		break
 	case `ftps`:
 		clientSession = NewFTPS(host, port, username, password)
+		break
+	case `local`:
+		clientSession = NewLocalFolder(dirpath)
 		break
 	default:
 		clientSession = NewSFTP(host, port, username, password)
