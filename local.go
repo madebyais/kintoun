@@ -26,6 +26,8 @@ func NewLocalFolder(dirpath string) Interface {
 
 // ReaddirSourceFolder is used to read files in a local directory
 func (l *LocalFolder) ReaddirSourceFolder(crontdata Cron) error {
+	Logf("Read source folder=%s\n", l.dirpath)
+
 	files, err := ioutil.ReadDir(l.dirpath)
 	if err != nil {
 		return err
@@ -39,6 +41,10 @@ func (l *LocalFolder) ReaddirSourceFolder(crontdata Cron) error {
 			isDayMatch := item.ModTime().Day() == time.Now().Day()
 
 			prefixCodes := strings.Split(item.Name(), crontdata.Task.FilePrefixDelimiter)
+			if len(prefixCodes) < 2 {
+				continue
+			}
+
 			prefixCode := prefixCodes[crontdata.Task.FilePrefixIndex]
 			isFileLatestUpdate := item.ModTime().After(l.lastFileModTime[prefixCode])
 			isPrevFileDifferent := l.lastFileUpload[prefixCode] != item.Name()
@@ -65,6 +71,10 @@ func (l *LocalFolder) ReaddirSourceFolder(crontdata Cron) error {
 
 // SetFilenameToDownload is used to set a filename to download as temp file
 func (l *LocalFolder) SetFilenameToDownload(filename string) {
+	if filename == "" {
+		l.filenameToDownload = ""
+		return
+	}
 	l.filenameToDownload = l.dirpath + "/" + filename
 }
 
