@@ -16,7 +16,7 @@ import (
 // SFTP client
 type SFTP struct {
 	sftpclient         *sftp.Client
-	filenameToDownload string
+	filenameToDownload []string
 	lastFileModTime    map[string]time.Time
 	lastFileUpload     map[string]string
 }
@@ -54,6 +54,8 @@ func NewSFTP(host, port, username, password string) Interface {
 
 // ReaddirSourceFolder is used to read files in a dir
 func (s *SFTP) ReaddirSourceFolder(crondata Cron) error {
+	fileToDownload := make([]string, 0)
+
 	if crondata.Task.FilePrefix != "" {
 		sourceFiles, errSourceFiles := s.sftpclient.ReadDir(crondata.Task.SourceFolder)
 		if errSourceFiles != nil {
@@ -72,30 +74,31 @@ func (s *SFTP) ReaddirSourceFolder(crondata Cron) error {
 			isPrevFileDifferent := s.lastFileUpload[prefixCode] != item.Name()
 
 			if !isPrevFileDifferent {
-				s.SetFilenameToDownload("")
 				continue
 			}
 
 			if isMatch && isYearMatch && isMonthMatch && isDayMatch && isFileLatestUpdate && isPrevFileDifferent {
 				s.lastFileModTime[prefixCode] = item.ModTime()
 				s.lastFileUpload[prefixCode] = item.Name()
-				s.SetFilenameToDownload(item.Name())
+				fileToDownload = append(fileToDownload, item.Name())
 			}
 		}
 	} else {
-		s.SetFilenameToDownload(crondata.Task.File)
+		fileToDownload = append(fileToDownload, crondata.Task.File)
 	}
+
+	s.SetFilenameToDownload(fileToDownload)
 
 	return nil
 }
 
 // SetFilenameToDownload is used to set a filename to download as temp file
-func (s *SFTP) SetFilenameToDownload(filename string) {
+func (s *SFTP) SetFilenameToDownload(filename []string) {
 	s.filenameToDownload = filename
 }
 
 // GetFilenameToDownload is used to get a filename to download as temp file
-func (s *SFTP) GetFilenameToDownload() string {
+func (s *SFTP) GetFilenameToDownload() []string {
 	return s.filenameToDownload
 }
 
