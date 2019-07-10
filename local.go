@@ -43,6 +43,8 @@ func (l *LocalFolder) ReaddirSourceFolder(crontdata Cron) error {
 			isFileLatestUpdate := item.ModTime().After(l.lastFileModTime[prefixCode])
 			isPrevFileDifferent := l.lastFileUpload[prefixCode] != item.Name()
 
+			Logf("name=%s prefixCode=%s isFileLatestUpdate=%t isPrevFileDifferent=%t isMatch=%t isDate=%t\n", item.Name(), prefixCode, isFileLatestUpdate, isPrevFileDifferent, isMatch, (isYearMatch && isMonthMatch && isDayMatch))
+
 			if !isPrevFileDifferent {
 				l.SetFilenameToDownload("")
 				continue
