@@ -14,7 +14,7 @@ import (
 // FTPS client
 type FTPS struct {
 	ftpsclient         *ftps.FTPS
-	filenameToDownload string
+	filenameToDownload []string
 	lastFileModTime    map[string]time.Time
 	lastFileUpload     map[string]string
 }
@@ -45,6 +45,7 @@ func NewFTPS(host, port, username, password string) Interface {
 
 // ReaddirSourceFolder is used to read files in a dir
 func (f *FTPS) ReaddirSourceFolder(crondata Cron) error {
+	fileToDownload := make([]string, 0)
 	if crondata.Task.FilePrefix != "" {
 		errChangeWorkingDir := f.ftpsclient.ChangeWorkingDirectory(crondata.Task.SourceFolder)
 		if errChangeWorkingDir != nil {
@@ -68,30 +69,32 @@ func (f *FTPS) ReaddirSourceFolder(crondata Cron) error {
 			isPrevFileDifferent := f.lastFileUpload[prefixCode] != item.Name
 
 			if !isPrevFileDifferent {
-				f.SetFilenameToDownload("")
 				continue
 			}
 
 			if isMatch && isYearMatch && isMonthMatch && isDayMatch && isFileLatestUpdate && isPrevFileDifferent {
 				f.lastFileModTime[prefixCode] = item.Time
 				f.lastFileUpload[prefixCode] = item.Name
-				f.SetFilenameToDownload(item.Name)
+				fileToDownload = append(fileToDownload, item.Name)
 			}
 		}
 	} else {
-		f.SetFilenameToDownload(crondata.Task.File)
+		fileToDownload = append(fileToDownload, crondata.Task.File)
 	}
+
+	f.SetFilenameToDownload(fileToDownload)
+
 
 	return nil
 }
 
 // SetFilenameToDownload is used to set a filename to download as temp file
-func (f *FTPS) SetFilenameToDownload(filename string) {
+func (f *FTPS) SetFilenameToDownload(filename []string) {
 	f.filenameToDownload = filename
 }
 
 // GetFilenameToDownload is used to get a filename to download as temp file
-func (f *FTPS) GetFilenameToDownload() string {
+func (f *FTPS) GetFilenameToDownload() []string {
 	return f.filenameToDownload
 }
 

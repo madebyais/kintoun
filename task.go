@@ -116,29 +116,35 @@ func (t *Task) Exec(crondata Cron) func() {
 			return
 		}
 
-		filename := clientSession.GetFilenameToDownload()
-		if filename == "" {
+		filenames := clientSession.GetFilenameToDownload()
+		if len(filenames) == 0 {
 			Log("No new file need to be downloaded")
 			Log("----------------------------------")
 			return
 		}
 
-		// This is to check whether cron.source.folder is local folder
-		if strings.Contains(filename, "/") {
-			t.Upload(filename)
-			return
+		for _, filename := range filenames {
+			t.ProcessFile(clientSession, folderPath, filename)
 		}
-
-		filepath := folderPath + `/` + filename
-		errDownloadTempFile := clientSession.DownloadTempFile(filepath)
-		if errDownloadTempFile != nil {
-			Logf("Failed to download filepath=%s error=%s\n", filepath, errDownloadTempFile.Error())
-			Log("----------------------------------")
-			return
-		}
-
-		t.Upload(filename)
 	}
+}
+
+func (t *Task) ProcessFile(cli Interface, folderPath, filename string) {
+	// This is to check whether cron.source.folder is local folder
+	if strings.Contains(filename, "/") {
+		t.Upload(filename)
+		return
+	}
+
+	filepath := folderPath + `/` + filename
+	errDownloadTempFile := cli.DownloadTempFile(filepath)
+	if errDownloadTempFile != nil {
+		Logf("Failed to download filepath=%s error=%s\n", filepath, errDownloadTempFile.Error())
+		Log("----------------------------------")
+		return
+	}
+
+	t.Upload(filepath)
 }
 
 // Upload is used to uplad download temp file to destination

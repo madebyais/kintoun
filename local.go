@@ -10,7 +10,7 @@ import (
 // LocalFolder client
 type LocalFolder struct {
 	dirpath            string
-	filenameToDownload string
+	filenameToDownload []string
 	lastFileModTime    map[string]time.Time
 	lastFileUpload     map[string]string
 }
@@ -33,6 +33,8 @@ func (l *LocalFolder) ReaddirSourceFolder(crontdata Cron) error {
 		return err
 	}
 
+	fileToDownload := make([]string, 0)
+
 	for _, item := range files {
 		if crontdata.Task.FilePrefix != "" {
 			isMatch, _ := regexp.MatchString(crontdata.Task.FilePrefix, item.Name())
@@ -49,37 +51,32 @@ func (l *LocalFolder) ReaddirSourceFolder(crontdata Cron) error {
 			isFileLatestUpdate := item.ModTime().After(l.lastFileModTime[prefixCode])
 			isPrevFileDifferent := l.lastFileUpload[prefixCode] != item.Name()
 
-			Logf("name=%s prefixCode=%s isFileLatestUpdate=%t isPrevFileDifferent=%t isMatch=%t isDate=%t\n", item.Name(), prefixCode, isFileLatestUpdate, isPrevFileDifferent, isMatch, (isYearMatch && isMonthMatch && isDayMatch))
-
 			if !isPrevFileDifferent {
-				l.SetFilenameToDownload("")
 				continue
 			}
 
 			if isMatch && isYearMatch && isMonthMatch && isDayMatch && isFileLatestUpdate && isPrevFileDifferent {
 				l.lastFileModTime[prefixCode] = item.ModTime()
 				l.lastFileUpload[prefixCode] = item.Name()
-				l.SetFilenameToDownload(item.Name())
+				fileToDownload = append(fileToDownload, l.dirpath + "/" + item.Name())
 			}
 		} else {
-			l.SetFilenameToDownload(crontdata.Task.File)
+			fileToDownload = append(fileToDownload, l.dirpath + "/" + crontdata.Task.File)
 		}
 	}
+
+	l.SetFilenameToDownload(fileToDownload)
 
 	return nil
 }
 
 // SetFilenameToDownload is used to set a filename to download as temp file
-func (l *LocalFolder) SetFilenameToDownload(filename string) {
-	if filename == "" {
-		l.filenameToDownload = ""
-		return
-	}
-	l.filenameToDownload = l.dirpath + "/" + filename
+func (l *LocalFolder) SetFilenameToDownload(filenames []string) {
+	l.filenameToDownload = filenames
 }
 
 // GetFilenameToDownload is used to get a filename to download as temp file
-func (l *LocalFolder) GetFilenameToDownload() string {
+func (l *LocalFolder) GetFilenameToDownload() []string {
 	return l.filenameToDownload
 }
 

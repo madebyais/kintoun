@@ -12,8 +12,8 @@ import (
 // Interface is FTP client interfaces
 type Interface interface {
 	ReaddirSourceFolder(crontdata Cron) error
-	SetFilenameToDownload(filename string)
-	GetFilenameToDownload() string
+	SetFilenameToDownload(filename []string)
+	GetFilenameToDownload() []string
 	DownloadTempFile(filepath string) error
 	Close()
 }
